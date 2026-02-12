@@ -49,8 +49,10 @@ async function test() {
   ];
 
   // Seed IDs and fingerprints (simulates first run)
-  await redis.sadd(TEST_ID_KEY, ...existingListings.map((l) => l.id));
-  await redis.sadd(TEST_FP_KEY, ...existingListings.map(getFingerprint));
+  const ids = existingListings.map((l) => l.id) as [string, ...string[]];
+  const fps = existingListings.map(getFingerprint) as [string, ...string[]];
+  await redis.sadd(TEST_ID_KEY, ...ids);
+  await redis.sadd(TEST_FP_KEY, ...fps);
 
   console.log("Seeded 2 existing listings:");
   existingListings.forEach((l) =>

@@ -29,9 +29,9 @@ function validateEnv(): void {
   }
 
   // At least one URL source must be configured
-  if (!process.env.NJUSKALO_URLS && !process.env.INDEX_HR_URLS && !process.env.OGLASNIK_HR_URLS) {
+  if (!process.env.NJUSKALO_URLS && !process.env.INDEX_HR_URLS && !process.env.OGLASNIK_HR_URLS && !process.env.NEKRETNINE_HR_URLS) {
     throw new Error(
-      "At least one of NJUSKALO_URLS, INDEX_HR_URLS, or OGLASNIK_HR_URLS must be set"
+      "At least one URL source must be set (NJUSKALO_URLS, INDEX_HR_URLS, OGLASNIK_HR_URLS, or NEKRETNINE_HR_URLS)"
     );
   }
 }
@@ -54,6 +54,12 @@ function collectUrls(): string[] {
   if (process.env.OGLASNIK_HR_URLS) {
     urls.push(
       ...process.env.OGLASNIK_HR_URLS.split("|||").map((u) => u.trim()).filter(Boolean)
+    );
+  }
+
+  if (process.env.NEKRETNINE_HR_URLS) {
+    urls.push(
+      ...process.env.NEKRETNINE_HR_URLS.split("|||").map((u) => u.trim()).filter(Boolean)
     );
   }
 

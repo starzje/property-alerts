@@ -32,6 +32,7 @@ jobs:
           NJUSKALO_URLS: ${{ secrets.NJUSKALO_URLS }}
           INDEX_HR_URLS: ${{ secrets.INDEX_HR_URLS }}
           OGLASNIK_HR_URLS: ${{ secrets.OGLASNIK_HR_URLS }}
+          NEKRETNINE_HR_URLS: ${{ secrets.NEKRETNINE_HR_URLS }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

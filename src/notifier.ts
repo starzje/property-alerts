@@ -26,7 +26,9 @@ export async function notifyNewListing(listing: Listing): Promise<void> {
     ? "Index Oglasi"
     : listing.url.includes("oglasnik.hr")
       ? "Oglasnik"
-      : "Njuškalo";
+      : listing.url.includes("nekretnine.hr")
+        ? "Nekretnine.hr"
+        : "Njuškalo";
   const message = [
     `🏠 <b>New Listing!</b>`,
     ``,

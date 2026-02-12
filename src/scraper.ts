@@ -25,6 +25,8 @@ export async function scrapeListings(url: string): Promise<Listing[]> {
     extractFn = extractIndexHrListings;
   } else if (domain.includes("oglasnik.hr")) {
     extractFn = extractOglasnikListings;
+  } else if (domain.includes("nekretnine.hr")) {
+    extractFn = extractNekretnineListings;
   } else {
     throw new Error(`Unsupported site: ${domain}`);
   }
@@ -245,6 +247,65 @@ async function extractOglasnikListings(page: Page): Promise<Listing[]> {
       })
       .filter((l) => l.id !== "");
   });
+}
+
+// ---------------------------------------------------------------------------
+// Nekretnine.hr
+// ---------------------------------------------------------------------------
+
+async function extractNekretnineListings(page: Page): Promise<Listing[]> {
+  // Dismiss cookie consent popup if present ("agree & close")
+  try {
+    const cookieButton = page.getByRole("button", { name: "agree & close" });
+    await cookieButton.click({ timeout: COOKIE_TIMEOUT });
+    console.log("Cookie consent dismissed.");
+  } catch {
+    // Cookie popup not found or already dismissed — continue
+  }
+
+  // Wait for listing cards to render (CSS modules — use partial class match)
+  await page.waitForSelector('[class*="in-listingCardProperty__"]', {
+    timeout: 30_000,
+  });
+
+  return page.$$eval(
+    'div.nd-mediaObject[class*="in-listingCardProperty"]',
+    (elements) => {
+      return elements
+        .map((el) => {
+          // Title link contains href, title, and text
+          const titleEl = el.querySelector('a[class*="Title_title"]');
+          const href = titleEl?.getAttribute("href") ?? "";
+          const fullUrl = href.startsWith("http")
+            ? href
+            : `https://www.nekretnine.hr${href}`;
+
+          // ID from URL — e.g. /oglasi/2636283/
+          const idMatch = href.match(/\/oglasi\/(\d+)/);
+          const id = idMatch ? `nek-${idMatch[1]}` : "";
+
+          // Title from the element's title attribute or text content
+          const title =
+            titleEl?.getAttribute("title") ??
+            titleEl?.textContent?.trim() ??
+            "";
+
+          // Price
+          const priceEl = el.querySelector('[class*="in-listingCardPrice"] span');
+          const price = priceEl?.textContent?.trim() ?? "";
+
+          // No separate location field — it's included in the title
+          const location: string | undefined = undefined;
+
+          // First image in the slideshow
+          const imgEl = el.querySelector(".nd-slideshow__item img");
+          const imageUrl = imgEl?.getAttribute("src") || undefined;
+
+          return { id, title, price, url: fullUrl, location, imageUrl };
+        })
+        .filter((l) => l.id !== "");
+    }
+  );
 }
 
 function delay(ms: number): Promise<void> {
