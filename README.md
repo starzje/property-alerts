@@ -1,17 +1,23 @@
-# Njuškalo Listing Scraper
+# Croatian Property Listing Scraper
 
-Automatically monitors [Njuškalo](https://www.njuskalo.hr) (Croatia's largest classifieds site) for new property listings and sends instant notifications to your phone via Telegram.
+Automatically monitors multiple Croatian classifieds sites for new property listings and sends instant notifications to your phone via Telegram.
+
+**Supported sites:**
+- [Njuškalo](https://www.njuskalo.hr)
+- [Index Oglasi](https://www.index.hr/oglasi)
+- [Oglasnik](https://oglasnik.hr)
 
 ## How It Works
 
 1. **Every hour**, a scheduled job runs in the cloud (GitHub Actions)
-2. It opens your saved Njuškalo search pages in a headless browser (like a robot browsing the site)
-3. It collects all the listings on the page — title, price, location, photo
+2. It opens your saved search pages across all configured sites in a headless browser (like a robot browsing the site)
+3. It collects all the listings on each page — title, price, location, photo
 4. It compares them against a list of previously seen listings (stored in a cloud database)
-5. If there are **new listings** that weren't there before → it sends you a Telegram message with the details
-6. If nothing new → it does nothing and waits for the next hour
+5. **Repost detection**: if someone takes down a listing and re-uploads it with the same title and price, it's recognized as a duplicate and skipped — no spam
+6. If there are **genuinely new listings** → it sends you a Telegram message with the details
+7. If nothing new → it does nothing and waits for the next hour
 
-That's it. Set it up once, and you'll get a phone notification whenever something new pops up — no need to manually refresh the page.
+That's it. Set it up once, and you'll get a phone notification whenever something new pops up — no need to manually check three different sites.
 
 ## What a Notification Looks Like
 
@@ -25,13 +31,21 @@ Zaprešić, samostojeća kuća, 95 m2
 🔗 View on Njuškalo
 ```
 
+The link text adapts to the source site (Njuškalo / Index Oglasi / Oglasnik).
+
+## How Repost Detection Works
+
+People on classifieds sites often delete and re-post their listing to bump it to the top. This would normally trigger a new notification since the listing gets a new ID.
+
+The scraper prevents this by generating a **fingerprint** (normalized title + price) for every listing it sees. If a "new" listing has the same fingerprint as one already seen, it's silently skipped. This means you only get notified about genuinely new properties.
+
 ## Tech Stack
 
 | Component | Purpose |
 |---|---|
 | **Node.js + TypeScript** | The scraper script |
-| **Playwright** | Headless browser that loads Njuškalo pages (bypasses bot protection) |
-| **Upstash Redis** | Cloud database that remembers which listings have already been seen |
+| **Playwright + Stealth** | Headless browser that loads pages and bypasses Cloudflare bot protection |
+| **Upstash Redis** | Cloud database that tracks seen listing IDs and content fingerprints |
 | **Telegram Bot API** | Sends notifications to your phone |
 | **GitHub Actions** | Runs the scraper every hour for free (cron job) |
 
@@ -61,11 +75,15 @@ cp .env.example .env
 
 | Variable | What it is |
 |---|---|
-| `NJUSKALO_URLS` | One or more Njuškalo search URLs, separated by `\|\|\|` |
+| `NJUSKALO_URLS` | Njuškalo search URLs, separated by `\|\|\|` (optional) |
+| `INDEX_HR_URLS` | Index.hr Oglasi search URLs, separated by `\|\|\|` (optional) |
+| `OGLASNIK_HR_URLS` | Oglasnik.hr search URLs, separated by `\|\|\|` (optional) |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather |
 | `TELEGRAM_CHAT_ID` | Your Telegram user/chat ID |
+
+At least one of the URL variables must be set. You can use any combination of sites.
 
 ### 3. Test locally
 
