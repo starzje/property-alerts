@@ -1,6 +1,12 @@
 import "dotenv/config";
 import { scrapeListings } from "./scraper.js";
-import { getSeenIds, addSeenIds, hasSeenIds } from "./store.js";
+import {
+  getSeenIds,
+  addSeenIds,
+  hasSeenIds,
+  getSeenFingerprints,
+  addSeenFingerprints,
+} from "./store.js";
 import {
   notifyNewListings,
   notifyError,
@@ -10,7 +16,6 @@ import {
 import type { Listing } from "./types.js";
 
 const REQUIRED_ENV_VARS = [
-  "NJUSKALO_URLS",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
   "TELEGRAM_BOT_TOKEN",
@@ -22,6 +27,37 @@ function validateEnv(): void {
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
+
+  // At least one URL source must be configured
+  if (!process.env.NJUSKALO_URLS && !process.env.INDEX_HR_URLS && !process.env.OGLASNIK_HR_URLS) {
+    throw new Error(
+      "At least one of NJUSKALO_URLS, INDEX_HR_URLS, or OGLASNIK_HR_URLS must be set"
+    );
+  }
+}
+
+function collectUrls(): string[] {
+  const urls: string[] = [];
+
+  if (process.env.NJUSKALO_URLS) {
+    urls.push(
+      ...process.env.NJUSKALO_URLS.split("|||").map((u) => u.trim()).filter(Boolean)
+    );
+  }
+
+  if (process.env.INDEX_HR_URLS) {
+    urls.push(
+      ...process.env.INDEX_HR_URLS.split("|||").map((u) => u.trim()).filter(Boolean)
+    );
+  }
+
+  if (process.env.OGLASNIK_HR_URLS) {
+    urls.push(
+      ...process.env.OGLASNIK_HR_URLS.split("|||").map((u) => u.trim()).filter(Boolean)
+    );
+  }
+
+  return urls;
 }
 
 async function main(): Promise<void> {
@@ -30,7 +66,7 @@ async function main(): Promise<void> {
 
   validateEnv();
 
-  const urls = process.env.NJUSKALO_URLS!.split("|||").map((u) => u.trim());
+  const urls = collectUrls();
   console.log(`Monitoring ${urls.length} search URL(s)`);
 
   // Scrape all URLs and aggregate listings
@@ -55,6 +91,10 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Always keep fingerprints in sync — ensures the set is populated
+  // even if the feature was added after the first run
+  await addSeenFingerprints(allListings.map(getFingerprint));
+
   // Check if this is the first run
   const isFirstRun = !(await hasSeenIds());
 
@@ -66,20 +106,53 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Subsequent run — find new listings
+  // Subsequent run — find new listings by ID
   const seenIds = await getSeenIds();
-  const newListings = allListings.filter((l) => !seenIds.has(l.id));
+  const newByIdListings = allListings.filter((l) => !seenIds.has(l.id));
 
-  if (newListings.length > 0) {
-    console.log(`Found ${newListings.length} new listing(s)`);
-    await notifyNewListings(newListings);
-    await addSeenIds(newListings.map((l) => l.id));
-  } else {
+  if (newByIdListings.length === 0) {
     console.log("No new listings found");
+  } else {
+    // Filter out reposts (same title + price as a previously seen listing)
+    const seenFps = await getSeenFingerprints();
+    const genuinelyNew: Listing[] = [];
+    const reposts: Listing[] = [];
+
+    for (const listing of newByIdListings) {
+      if (seenFps.has(getFingerprint(listing))) {
+        reposts.push(listing);
+      } else {
+        genuinelyNew.push(listing);
+      }
+    }
+
+    if (reposts.length > 0) {
+      console.log(`Skipped ${reposts.length} repost(s) (same title + price as before)`);
+    }
+
+    // Track new IDs
+    await addSeenIds(newByIdListings.map((l) => l.id));
+
+    if (genuinelyNew.length > 0) {
+      console.log(`Found ${genuinelyNew.length} genuinely new listing(s)`);
+      await notifyNewListings(genuinelyNew);
+    } else {
+      console.log("No new listings found (all were reposts)");
+    }
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`[${new Date().toISOString()}] Scraper finished in ${elapsed}s`);
+}
+
+/**
+ * Generate a fingerprint from a listing's title + price.
+ * Used to detect reposts — same listing re-uploaded with a new ID.
+ */
+function getFingerprint(listing: Listing): string {
+  const title = listing.title.toLowerCase().replace(/\s+/g, " ").trim();
+  const price = listing.price.replace(/\s+/g, "").trim();
+  return `${title}|${price}`;
 }
 
 main().catch(async (err) => {

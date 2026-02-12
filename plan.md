@@ -91,10 +91,10 @@ _This is the most complex and fragile part — depends on Njuškalo's actual DOM
 
 ## Phase 8: Local Testing & Verification
 
-- [ ] **8.1** Create a `.env` file with real credentials (not committed)
-- [ ] **8.2** Run `npx playwright install chromium` locally
-- [ ] **8.3** Run `npx tsx src/index.ts` — verify first-run behavior (seeds listings, sends "initialized" Telegram message)
-- [ ] **8.4** Run again — verify "no new listings found" log and no Telegram messages sent
+- [x] **8.1** Create a `.env` file with real credentials (not committed)
+- [x] **8.2** Run `npx playwright install chromium` locally
+- [x] **8.3** Run `npx tsx src/index.ts` — verify first-run behavior (seeds listings, sends "initialized" Telegram message)
+- [x] **8.4** Run again — verify "no new listings found" log and no Telegram messages sent
 - [ ] **8.5** Manually delete one ID from Redis, run again — verify that listing triggers a Telegram notification
 - [x] **8.6** Run `tsc --noEmit` to confirm no type errors
 
@@ -102,9 +102,9 @@ _This is the most complex and fragile part — depends on Njuškalo's actual DOM
 
 ## Phase 9: Deploy & Monitor
 
-- [ ] **9.1** Push code to GitHub
-- [ ] **9.2** Add all secrets to the repo (Settings → Secrets → Actions)
-- [ ] **9.3** Trigger the workflow manually via `workflow_dispatch` and verify it passes
+- [x] **9.1** Push code to GitHub
+- [x] **9.2** Add all secrets to the repo (Settings → Secrets → Actions)
+- [x] **9.3** Trigger the workflow manually via `workflow_dispatch` and verify it passes
 - [ ] **9.4** Wait for the first cron-triggered run and confirm it works
 - [ ] **9.5** Monitor Telegram for the next few hours to ensure notifications are arriving correctly
 

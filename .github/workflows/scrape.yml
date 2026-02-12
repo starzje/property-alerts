@@ -1,4 +1,4 @@
-name: Scrape Njuškalo
+name: Scrape Listings
 
 on:
   schedule:
@@ -30,6 +30,8 @@ jobs:
         run: npx tsx src/index.ts
         env:
           NJUSKALO_URLS: ${{ secrets.NJUSKALO_URLS }}
+          INDEX_HR_URLS: ${{ secrets.INDEX_HR_URLS }}
+          OGLASNIK_HR_URLS: ${{ secrets.OGLASNIK_HR_URLS }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

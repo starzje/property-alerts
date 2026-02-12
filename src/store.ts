@@ -6,6 +6,7 @@ const redis = new Redis({
 });
 
 const REDIS_KEY = "njuskalo:seen_ids";
+const FINGERPRINT_KEY = "seen:fingerprints";
 const TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 export async function getSeenIds(): Promise<Set<string>> {
@@ -23,4 +24,15 @@ export async function addSeenIds(ids: string[]): Promise<void> {
 export async function hasSeenIds(): Promise<boolean> {
   const exists = await redis.exists(REDIS_KEY);
   return exists === 1;
+}
+
+export async function getSeenFingerprints(): Promise<Set<string>> {
+  const members = await redis.smembers(FINGERPRINT_KEY);
+  return new Set(members.map(String));
+}
+
+export async function addSeenFingerprints(fingerprints: string[]): Promise<void> {
+  if (fingerprints.length === 0) return;
+  await redis.sadd(FINGERPRINT_KEY, ...(fingerprints as [string, ...string[]]));
+  await redis.expire(FINGERPRINT_KEY, TTL_SECONDS);
 }

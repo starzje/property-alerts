@@ -22,15 +22,19 @@ async function sendTelegramMessage(text: string): Promise<void> {
 }
 
 export async function notifyNewListing(listing: Listing): Promise<void> {
-  const location = listing.location ? `📍 ${listing.location}\n` : "";
+  const siteName = listing.url.includes("index.hr")
+    ? "Index Oglasi"
+    : listing.url.includes("oglasnik.hr")
+      ? "Oglasnik"
+      : "Njuškalo";
   const message = [
     `🏠 <b>New Listing!</b>`,
     ``,
     `<b>${listing.title}</b>`,
     `💰 ${listing.price}`,
-    location ? `📍 ${listing.location}` : null,
+    listing.location ? `📍 ${listing.location}` : null,
     ``,
-    `🔗 <a href="${listing.url}">View on Njuškalo</a>`,
+    `🔗 <a href="${listing.url}">View on ${siteName}</a>`,
   ]
     .filter(Boolean)
     .join("\n");
