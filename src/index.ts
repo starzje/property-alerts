@@ -91,30 +91,29 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Always keep fingerprints in sync — ensures the set is populated
-  // even if the feature was added after the first run
-  await addSeenFingerprints(allListings.map(getFingerprint));
-
   // Check if this is the first run
   const isFirstRun = !(await hasSeenIds());
 
   if (isFirstRun) {
     const ids = allListings.map((l) => l.id);
     await addSeenIds(ids);
+    await addSeenFingerprints(allListings.map(getFingerprint));
     console.log(`First run: seeded ${ids.length} existing listings`);
     await notifyInitialized(allListings.length, urls.length);
     return;
   }
 
-  // Subsequent run — find new listings by ID
+  // Fetch seen IDs and fingerprints BEFORE adding new ones
   const seenIds = await getSeenIds();
+  const seenFps = await getSeenFingerprints();
+
+  // Find listings with IDs we haven't seen before
   const newByIdListings = allListings.filter((l) => !seenIds.has(l.id));
 
   if (newByIdListings.length === 0) {
     console.log("No new listings found");
   } else {
     // Filter out reposts (same title + price as a previously seen listing)
-    const seenFps = await getSeenFingerprints();
     const genuinelyNew: Listing[] = [];
     const reposts: Listing[] = [];
 
@@ -140,6 +139,10 @@ async function main(): Promise<void> {
       console.log("No new listings found (all were reposts)");
     }
   }
+
+  // Sync all current fingerprints AFTER comparison
+  // This ensures the set stays populated (handles migration + new listings)
+  await addSeenFingerprints(allListings.map(getFingerprint));
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`[${new Date().toISOString()}] Scraper finished in ${elapsed}s`);
