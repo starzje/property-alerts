@@ -264,17 +264,17 @@ async function extractNekretnineListings(page: Page): Promise<Listing[]> {
   }
 
   // Wait for listing cards to render (CSS modules — use partial class match)
-  await page.waitForSelector('[class*="in-listingCardProperty__"]', {
+  await page.waitForSelector('[class*="Property_card__"]', {
     timeout: 30_000,
   });
 
   return page.$$eval(
-    'div.nd-mediaObject[class*="in-listingCardProperty"]',
+    'div.nd-mediaObject[class*="Property_card__"]',
     (elements) => {
       return elements
         .map((el) => {
           // Title link contains href, title, and text
-          const titleEl = el.querySelector('a[class*="Title_title"]');
+          const titleEl = el.querySelector('a[class*="Title_title__"]');
           const href = titleEl?.getAttribute("href") ?? "";
           const fullUrl = href.startsWith("http")
             ? href
@@ -291,14 +291,14 @@ async function extractNekretnineListings(page: Page): Promise<Listing[]> {
             "";
 
           // Price
-          const priceEl = el.querySelector('[class*="in-listingCardPrice"] span');
+          const priceEl = el.querySelector('[class*="Price_price__"] span');
           const price = priceEl?.textContent?.trim() ?? "";
 
           // No separate location field — it's included in the title
           const location: string | undefined = undefined;
 
           // First image in the slideshow
-          const imgEl = el.querySelector(".nd-slideshow__item img");
+          const imgEl = el.querySelector(".nd-slideshow__item.is-current img");
           const imageUrl = imgEl?.getAttribute("src") || undefined;
 
           return { id, title, price, url: fullUrl, location, imageUrl };
