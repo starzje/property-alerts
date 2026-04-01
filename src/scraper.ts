@@ -203,10 +203,11 @@ async function extractOglasnikListings(page: Page): Promise<Listing[]> {
     // Cookie popup not found or already dismissed — continue
   }
 
-  // Oglasnik redesigned (2025+) — listing cards are Tailwind-based anchors
-  await page.waitForSelector('a[href*="-oglas-"]', { timeout: 30_000 });
+  // Only real search-result cards — NOT every -oglas- link on the page (footer, promos, etc.)
+  const cardSel = 'a.short-ad-hover-group[href*="-oglas-"]';
+  await page.waitForSelector(cardSel, { timeout: 30_000 });
 
-  return page.$$eval('a[href*="-oglas-"]', (elements) => {
+  return page.$$eval(cardSel, (elements) => {
     return elements
       .filter((el) => {
         const href = el.getAttribute("href") ?? "";
@@ -245,11 +246,16 @@ async function extractOglasnikListings(page: Page): Promise<Listing[]> {
           el.querySelector("span.location");
         const location = locationEl?.textContent?.trim() || undefined;
 
-        // Image: first listing image (new) or legacy background-image
+        // Image: new UI may omit short-ad-first-image; use photo strip or legacy bg
         let imageUrl: string | undefined =
           el.querySelector("img.short-ad-first-image")?.getAttribute("src") ||
+          el.querySelector("div.relative img")?.getAttribute("src") ||
           el.querySelector("img[src*='media.oglasnik']")?.getAttribute("src") ||
           undefined;
+
+        if (imageUrl?.startsWith("/")) {
+          imageUrl = `https://oglasnik.hr${imageUrl}`;
+        }
 
         if (!imageUrl) {
           const imgDiv = el.querySelector(".image-wrapper-bg");
