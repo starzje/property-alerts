@@ -203,43 +203,65 @@ async function extractOglasnikListings(page: Page): Promise<Listing[]> {
     // Cookie popup not found or already dismissed — continue
   }
 
-  await page.waitForSelector("a.classified-box", { timeout: 30_000 });
+  // Oglasnik redesigned (2025+) — listing cards are Tailwind-based anchors
+  await page.waitForSelector('a[href*="-oglas-"]', { timeout: 30_000 });
 
-  return page.$$eval("a.classified-box", (elements) => {
+  return page.$$eval('a[href*="-oglas-"]', (elements) => {
     return elements
+      .filter((el) => {
+        const href = el.getAttribute("href") ?? "";
+        return /oglas-\d+(\?|$)/.test(href) || /-oglas-\d+$/.test(href);
+      })
       .map((el) => {
         const href = el.getAttribute("href") ?? "";
         const fullUrl = href.startsWith("http")
           ? href
           : `https://oglasnik.hr${href}`;
 
-        // ID from URL — e.g. "oglas-6552603" at the end
         const idMatch = href.match(/oglas-(\d+)/);
         const id = idMatch ? `ogl-${idMatch[1]}` : "";
 
-        // Title
-        const titleEl = el.querySelector("h3.classified-title");
-        const title = titleEl?.textContent?.trim() ?? "";
+        // Title: primary line under the image (new UI)
+        const titleEl =
+          el.querySelector("p.font-medium.text-slate-700") ??
+          el.querySelector("h3.classified-title") ??
+          el.querySelector("img[alt]");
 
-        // Price
-        const priceEl = el.querySelector(".price-block .main");
+        let title = titleEl?.textContent?.trim() ?? "";
+        if (!title && titleEl instanceof HTMLImageElement) {
+          title = titleEl.getAttribute("alt")?.trim() ?? "";
+        }
+
+        // Price: bold € line (new) or legacy .price-block .main
+        const priceEl =
+          el.querySelector("p.text-xl.font-bold") ??
+          el.querySelector(".price-block .main");
         const price = priceEl?.textContent?.trim() ?? "";
 
-        // Location from the .location span (contains an <i> icon + text)
-        const locationEl = el.querySelector("span.location");
+        // Location (new): region line; legacy: span.location
+        const locationEl =
+          el.querySelector("p.mt-2.mb-1.text-sm") ??
+          el.querySelector("p.text-sm.text-gray-700") ??
+          el.querySelector("span.location");
         const location = locationEl?.textContent?.trim() || undefined;
 
-        // Image from background-image on .image-wrapper-bg
-        const imgDiv = el.querySelector(".image-wrapper-bg");
-        let imageUrl: string | undefined;
-        if (imgDiv) {
-          const style = imgDiv.getAttribute("style") ?? "";
-          const urlMatch = style.match(/url\(["']?(.*?)["']?\)/);
-          const raw = urlMatch?.[1];
-          if (raw) {
-            imageUrl = raw.startsWith("http")
-              ? raw
-              : `https://oglasnik.hr${raw}`;
+        // Image: first listing image (new) or legacy background-image
+        let imageUrl: string | undefined =
+          el.querySelector("img.short-ad-first-image")?.getAttribute("src") ||
+          el.querySelector("img[src*='media.oglasnik']")?.getAttribute("src") ||
+          undefined;
+
+        if (!imageUrl) {
+          const imgDiv = el.querySelector(".image-wrapper-bg");
+          if (imgDiv) {
+            const style = imgDiv.getAttribute("style") ?? "";
+            const urlMatch = style.match(/url\(["']?(.*?)["']?\)/);
+            const raw = urlMatch?.[1];
+            if (raw) {
+              imageUrl = raw.startsWith("http")
+                ? raw
+                : `https://oglasnik.hr${raw}`;
+            }
           }
         }
 
